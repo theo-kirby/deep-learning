@@ -1,9 +1,9 @@
-from matrix import Matrix
+from tensor import Tensor # symlink from tensor-math
 from math import exp # only for exp (e)
 
 class MLP():
 
-	def __init__(self, inputs, depth, layers, outputs, learning_rate):
+	def __init__(self, inputs: int, depth: int, layers: int, outputs: int, learning_rate: float):
 
 		self.learning_rate = learning_rate
 
@@ -14,33 +14,33 @@ class MLP():
 		self.outputs = outputs
 
 		# add i -> h weights, biases
-		self.weights = [Matrix(self.neurons, self.inputs)]
-		self.biases = [Matrix(self.neurons, 1)]
+		self.weights = [Tensor((self.neurons, self.inputs))]
+		self.biases = [Tensor((self.neurons, 1))]
 
 		if self.layers > 1: # add h -> h weights, biases
 			for layer in range(self.layers -1):
-				self.weights.append(Matrix(self.neurons, self.neurons))
-				self.biases.append(Matrix(self.neurons, 1))
+				self.weights.append(Tensor((self.neurons, self.neurons)))
+				self.biases.append(Tensor((self.neurons, 1)))
 
 		# add h -> o weights, biases
-		self.weights.append(Matrix(self.outputs, self.neurons))
-		self.biases.append(Matrix(self.outputs, 1))
+		self.weights.append(Tensor((self.outputs, self.neurons)))
+		self.biases.append(Tensor((self.outputs, 1)))
 
-        # randomize all weights
-		for matrix in self.weights:
-			matrix.randomize()
+		# randomize all weights
+		for tensor in self.weights:
+			tensor.randomize()
 
 		for bias in self.biases:
 			bias.randomize()
 
-    # wrapper activation / derivative activation functions
-    def activation(self, x: float) -> float:
-        return self.sigmoid(x)
+	# wrapper activation / derivative activation functions
+	def activation(self, x: float) -> float:
+		return self.sigmoid(x)
 
-    def d_activation(self, x: float) -> float:
-        return self.de_sigmoid(x)
+	def d_activation(self, x: float) -> float:
+		return self.de_sigmoid(x)
 
-    # TODO: add tanh, relu
+	# TODO: add tanh, relu
 	def sigmoid(self, x: float) -> float:
 		if x >= 0:
 			return 1 / (1 + exp(-x))
@@ -54,33 +54,35 @@ class MLP():
 
 	def feed_forward(self, inputs: list):
 
-		input_matrix = Matrix(len(inputs), 1) # input conversion to matrix
-		input_matrix = input_matrix.init_from_array(inputs)
+		# input_matrix = Matrix(len(inputs), 1) # input conversion to matrix
+		# input_matrix = input_matrix.init_from_array(inputs)
 
-		activations = [input_matrix]
+		input_tensor = Tensor.from_array(inputs)
 
-        # iterate through every weight matrix and calculate the activations
+		activations = [input_tensor]
+
+		# iterate through every weight matrix and calculate the activations
 		for idx, matrix in enumerate(self.weights):
 
-			result = matrix.mat_mul(input_matrix)
-			result = result.ew_add(self.biases[idx])
+			result = matrix @ input_tensor
+			result = result + self.biases[idx]
 			result = result.map(self.activation)
 			
 			activations.append(result)
-			input_matrix = result # set for next
+			input_tensor = result # set for next
 
 		return activations 
 
 	def predict(self, inputs: list) -> list:
 		return self.feed_forward(inputs)[-1].to_array()
 
-    # verbose, long winded, modular impl for understanding
+	# verbose, long winded, modular impl for understanding
 	def train(self, inputs: list, target_list: list):
 
-		targets = Matrix(len(target_list), 1)
-		targets = targets.init_from_array(target_list)
+		targets = Tensor((len(target_list), 1))
+		targets = targets.from_array(target_list)
 
-        # perform forward pass, keep input, neuron activations, and output (0,n,-1)
+		# perform forward pass, keep input, neuron activations, and output (0,n,-1)
 		activations = self.feed_forward(inputs)
 
 		# compute output layer new weights and biases
@@ -94,20 +96,20 @@ class MLP():
 		prev_activations = activations[-2].transpose() # transpose prev act for mat mul of weights
 		weight_delta = delta.mat_mul(prev_activations) # mat mul the delta by the previous activations to get the final weight delta for this step
 
-        # may switch this to after the loop
+		# may switch this to after the loop
 		self.weights[-1] = self.weights[-1].ew_add(weight_delta) # update the weights with the delta relative to prev layer
 		self.biases[-1] = self.biases[-1].ew_add(delta)  # update the biases with the delta * 1 (as if its prev activations were always 1)
 
 		# iterate through the hidden layers backwards and propagate the error
-        # we already did the output layer + its prev activation, so we start there
+		# we already did the output layer + its prev activation, so we start there
 		for l in reversed(range(len(self.weights) - 1)):
 
 			# propagate error back through weights
 			errors = self.weights[l+1].transpose()
 			errors = errors.mat_mul(delta)
 
-            # compute delta for this layer (activations[l+1] is current activation:
-            # because we are only looping hidden layers but all have activations)
+			# compute delta for this layer (activations[l+1] is current activation:
+			# because we are only looping hidden layers but all have activations)
 			delta = activations[l+1].map(self.d_activation)
 			delta = delta.ew_mul(errors)
 			delta = delta.scalar_mul(self.learning_rate)
