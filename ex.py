@@ -1,4 +1,4 @@
-from nn import MLP
+from mlp import MLP
 
 nn = MLP(inputs=2, depth=8, layers=1, outputs=1, learning_rate=0.1)
 
