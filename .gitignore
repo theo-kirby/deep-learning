@@ -1,4 +1,6 @@
 __init__.py
+tensor.py
+matrix.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

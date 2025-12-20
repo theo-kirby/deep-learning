@@ -1,5 +1,5 @@
 from tensor import Tensor # symlink from tensor-math
-from math import exp # only for exp (e)
+from activations import sigmoid, de_sigmoid
 
 class MLP():
 
@@ -35,22 +35,10 @@ class MLP():
 
 	# wrapper activation / derivative activation functions
 	def activation(self, x: float) -> float:
-		return self.sigmoid(x)
+		return sigmoid(x)
 
 	def d_activation(self, x: float) -> float:
-		return self.de_sigmoid(x)
-
-	# TODO: add tanh, relu
-	def sigmoid(self, x: float) -> float:
-		if x >= 0:
-			return 1 / (1 + exp(-x))
-		else:
-			# save overflow if neg
-			ex = exp(x)
-			return ex / (1 + ex)
-	
-	def de_sigmoid(self, x: float) -> float:
-		return x * (1 - x) # expects already sigmoided x
+		return de_sigmoid(x)
 
 	def feed_forward(self, inputs: list):
 
@@ -79,8 +67,7 @@ class MLP():
 	# verbose, long winded, modular impl for understanding
 	def train(self, inputs: list, target_list: list):
 
-		targets = Tensor((len(target_list), 1))
-		targets = targets.from_array(target_list)
+		targets = Tensor.from_array(target_list)
 
 		# perform forward pass, keep input, neuron activations, and output (0,n,-1)
 		activations = self.feed_forward(inputs)
